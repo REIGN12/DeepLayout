@@ -54,7 +54,11 @@ class Trainer:
         self.fixed_x = None
         self.fixed_y = None
         print("Using wandb")
-        wandb.init(project='LayoutTransformer', name=args.exp)
+        wandb.login(key='a8c307987b041c73da9445e846682482ef2f526a')
+        wandb.init(
+            entity='reign',
+            project='LayoutTransformer', name=args.exp,
+        )
         wandb.config.update(args)
 
         # take over whatever gpus are on the system
