@@ -1,7 +1,7 @@
 import os
 import argparse
 import torch
-from dataset import MNISTLayout, JSONLayout
+from dataset import MNISTLayout, JSONLayout,PPTLayout
 from model import GPT, GPTConfig
 from trainer import Trainer, TrainerConfig
 from utils import set_seed
@@ -15,6 +15,10 @@ if __name__ == "__main__":
     # MNIST options
     parser.add_argument("--data_dir", default=None, help="/path/to/mnist/data")
     parser.add_argument("--threshold", type=int, default=16, help="threshold for grayscale values")
+
+    # PPT option
+    parser.add_argument("--pptdata",default=None,help="/path/to/pptdata")
+    parser.add_argument("--pptvaldata",default=None,help="/path/to/pptvaldata")
 
     # COCO/PubLayNet options
     parser.add_argument("--train_json", default="./instances_train.json", help="/path/to/train/json")
@@ -58,6 +62,9 @@ if __name__ == "__main__":
         train_dataset = MNISTLayout(args.log_dir, train=True, threshold=args.threshold)
         valid_dataset = MNISTLayout(args.log_dir, train=False, threshold=args.threshold,
                                     max_length=train_dataset.max_length)
+    if args.pptdata is not None:
+        train_dataset = PPTLayout(args.pptdata)
+        valid_dataset = PPTLayout(args.pptvaldata,max_length=train_dataset.max_length)
     # COCO and PubLayNet
     else:
         train_dataset = JSONLayout(args.train_json)
