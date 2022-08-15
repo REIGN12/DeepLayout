@@ -324,7 +324,7 @@ class PPTLayout(Dataset):
             bbox = seq[:,1:].astype(float)
             # convert from x2,y2 to wh
             bbox[:,[2,3]] -= bbox[:,[0,1]] 
-            bbox.clip(0,1)
+            bbox = bbox.clip(0,1) # prevent bad input!
             # quantize
             bbox = (bbox * quant_size).astype(int)
             # sorting from left2right and top2down
