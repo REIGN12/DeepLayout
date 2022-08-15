@@ -63,7 +63,7 @@ if __name__ == "__main__":
         valid_dataset = MNISTLayout(args.log_dir, train=False, threshold=args.threshold,
                                     max_length=train_dataset.max_length)
     if args.pptdata is not None:
-        train_dataset = PPTLayout(args.pptdata)
+        train_dataset = PPTLayout(args.pptdata,max_length=args.max_length)
         valid_dataset = PPTLayout(args.pptvaldata,max_length=train_dataset.max_length)
         print(f"train max_length is {train_dataset.max_length}")
     # COCO and PubLayNet
