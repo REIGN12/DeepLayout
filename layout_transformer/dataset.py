@@ -260,3 +260,6 @@ def ppt_test(datapath:Path):
     dataset = PPTLayout(datapath)
     print("Finish tesing")
     print(f"dataset is {dataset}")
+
+if __name__ == "__main__":
+    app()
