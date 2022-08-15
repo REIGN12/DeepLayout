@@ -5,6 +5,9 @@ from torch.utils.data.dataset import Dataset
 from PIL import Image, ImageDraw, ImageOps
 import json
 
+from pathlib import Path
+from typing import List, Tuple
+
 from utils import trim_tokens, gen_colors
 
 
@@ -186,3 +189,65 @@ class JSONLayout(Dataset):
         layout = torch.tensor(self.data[idx], dtype=torch.long)
         layout = self.transform(layout)
         return layout['x'], layout['y']
+
+
+class PPTLayout:
+    def __init__(self,datapath:Path=Path("pptdata.txt")) -> None:
+        """
+        pptdata.txt: 
+        seqs are serparated by empty line
+        """
+        with open(datapath,"r") as fin:
+            pptdata = fin.readlines()
+
+        # category analysis
+        topK_cates = 3
+        kept_cates,unkept_cates = self.category_analysis(pptdata,topK_cates)   
+        # seq and obj analysis
+        self.seq_obj_analysis(pptdata)
+        # cleaning
+        # rm total seq if containing unwanted category
+        # cleaning too long seq(>64 obj)
+        trunc_len = 64
+        seq_data = self.clean_data(pptdata,unkept_cates,trunc_len)
+
+
+    
+    def category_analysis(self,pptdata:List[str], topK:int)->Tuple[List[str],List[str]]:
+        # category analysis
+        cate_data = [line.split()[0] for line in pptdata if line!='\n']
+        total_obj_num = len(cate_data)
+        catenum = {cate:0 for cate in cate_data}
+        for cate in cate_data:
+            catenum[cate] +=1
+        # cateratio in descending number order
+        des_cate_keys = sorted(catenum,key=lambda k:catenum[k],reverse=True)
+        cateratio = {cate : catenum[cate]/total_obj_num 
+                    for cate in des_cate_keys
+                }
+        print("Category\tRatio")
+        for cate in des_cate_keys:
+            print(f"{cate} | {cateratio[cate]:.3f}")
+        print()
+        print(f"Only keep {topK} most categories...")
+        kept_cates = des_cate_keys[:topK]
+        print(f"Only keep {kept_cates}...")
+        unkept_cates = des_cate_keys[topK:]
+        print(f"Unkeep {unkept_cates}...")
+        return kept_cates,unkept_cates
+    
+    def seq_obj_analysis(self,pptdata:List[str]):
+        seq_data = [seq.split() for seq in "".join(pptdata).split("\n\n")]
+        print(f"Number of Seqs:{len(seq_data)}")
+        objlen_data = [len(seq)//5 for seq in seq_data]
+        print(f"MaxNumber of objs in a seq:{max(objlen_data)}")
+
+    def clean_data(self,pptdata:List[str],unkept_cates:List[str],trunc_len:int)->List[List[str]]:
+        seq_data = [seq for seq in ''.join(pptdata).split("\n\n")]
+        print(f"Before cleaning, Number of Seqs is {len(seq_data)}")
+        seq_data = [seq for seq in seq_data if not any(u_cate in seq for u_cate in unkept_cates)]
+        print(f"After cleaning unkept category{unkept_cates}\nNumber of Seqs is {len(seq_data)}")
+        seq_data = [seq.split() for seq in seq_data]
+        seq_data = [seq for seq in seq_data if len(seq) < 5 * trunc_len]
+        print(f"After cleaning too long(numobj > {trunc_len}) seqs\nNumber of Seqs is {len(seq_data)}")
+        return seq_data
