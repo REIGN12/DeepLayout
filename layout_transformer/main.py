@@ -65,6 +65,7 @@ if __name__ == "__main__":
     if args.pptdata is not None:
         train_dataset = PPTLayout(args.pptdata)
         valid_dataset = PPTLayout(args.pptvaldata,max_length=train_dataset.max_length)
+        print(f"train max_length is {train_dataset.max_length}")
     # COCO and PubLayNet
     else:
         train_dataset = JSONLayout(args.train_json)

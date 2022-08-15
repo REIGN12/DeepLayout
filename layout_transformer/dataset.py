@@ -222,6 +222,7 @@ class PPTLayout(Dataset):
         print("Cate2Tok:",cate2tok)
         self.data = self.convert2seq(seq_data,cate2tok,quant_size)
         self.max_length = max_length
+        print(f"max_length is {self.max_length}")
 
         self.vocab_size = self.size + len(self.categories) + 3 
         self.bos_token = self.vocab_size - 3
