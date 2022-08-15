@@ -220,7 +220,7 @@ class PPTLayout(Dataset):
             cate:id+quant_size for id,cate in enumerate(kept_cates)
         }
         print("Cate2Tok:",cate2tok)
-        self.seqs = self.convert2seq(cate2tok,quant_size)
+        self.seqs = self.convert2seq(seq_data,cate2tok,quant_size)
 
         self.vocab_size = self.size + len(self.categories) + 3 
         self.bos_token = self.vocab_size - 3
@@ -295,7 +295,7 @@ class PPTLayout(Dataset):
         print(f"After cleaning too long(numobj > {trunc_len}) seqs\nNumber of Seqs is {len(seq_data)}")
         return seq_data
 
-    def convert2seq(seq_data:List[List[str]], cate2tok:Dict[str,int],quant_size:int)->List[ndarray]:
+    def convert2seq(self,seq_data:List[List[str]], cate2tok:Dict[str,int],quant_size:int)->List[ndarray]:
         print("Start preparing seqs...")
         seqs = []
         seq_num = len(seq_data)
