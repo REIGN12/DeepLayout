@@ -194,7 +194,7 @@ class JSONLayout(Dataset):
 
 
 class PPTLayout(Dataset):
-    def __init__(self,datapath:Path,max_length:Optional[int]=None,precision:int=8) -> None:
+    def __init__(self,datapath:Path,max_length:int=162,precision:int=8) -> None:
         """
         pptdata.txt: 
         seqs are serparated by empty line
@@ -210,8 +210,8 @@ class PPTLayout(Dataset):
         self.seq_obj_analysis(pptdata)
         # cleaning
         # rm total seq if containing unwanted category
-        # cleaning too long seq(>64 obj)
-        trunc_len = 64
+        # cleaning too long seq(>trunc_len obj)
+        trunc_len = (max_length-2)//5 # rm <bos> and <eos>
         seq_data = self.clean_data(pptdata,unkept_cates,trunc_len)
 
         quant_size = pow(2,precision)
@@ -220,32 +220,49 @@ class PPTLayout(Dataset):
             cate:id+quant_size for id,cate in enumerate(kept_cates)
         }
         print("Cate2Tok:",cate2tok)
-        self.seqs = self.convert2seq(seq_data,cate2tok,quant_size)
+        self.data = self.convert2seq(seq_data,cate2tok,quant_size)
+        self.max_length = max_length
 
         self.vocab_size = self.size + len(self.categories) + 3 
         self.bos_token = self.vocab_size - 3
         self.eos_token = self.vocab_size - 2
         self.pad_token = self.vocab_size - 1
+        self.colors = gen_colors(len(self.categories))
 
-
-
-        
-
-
+        self.transform = Padding(self.max_length, self.vocab_size)
 
     
-    def render(self):
+    def render(self, layout):
         img = Image.new('RGB', (256, 256), color=(255, 255, 255))
         draw = ImageDraw.Draw(img, 'RGBA')
-        pass
+        layout = layout.reshape(-1)
+        layout = trim_tokens(layout, self.bos_token, self.eos_token, self.pad_token)
+        layout = layout[: len(layout) // 5 * 5].reshape(-1, 5)
+        box = layout[:, 1:].astype(np.float32)
+        box[:, [0, 1]] = box[:, [0, 1]] / (self.size - 1) * 255
+        box[:, [2, 3]] = box[:, [2, 3]] / self.size * 256
+        box[:, [2, 3]] = box[:, [0, 1]] + box[:, [2, 3]]
+
+        for i in range(len(layout)):
+            x1, y1, x2, y2 = box[i]
+            cat = layout[i][0]
+            col = self.colors[cat-self.size] if 0 <= cat-self.size < len(self.colors) else [0, 0, 0]
+            draw.rectangle([x1, y1, x2, y2],
+                           outline=tuple(col) + (200,),
+                           fill=tuple(col) + (64,),
+                           width=2)
+
+        # Add border around image
+        img = ImageOps.expand(img, border=2)
+        return img
 
     def __getitem__(self, index) -> Tuple[ndarray,ndarray]:
-        return 
+        layout = torch.tensor(self.data[index], dtype=torch.long)
+        layout = self.transform(layout)
+        return layout['x'], layout['y']
     
-    def __len__(self):
-        return
-
-
+    def __len__(self)->int:
+        return len(self.data)
     
     def category_analysis(self,pptdata:List[str], topK:int)->Tuple[List[str],List[str]]:
         # category analysis
