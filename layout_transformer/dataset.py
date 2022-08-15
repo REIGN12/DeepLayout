@@ -214,7 +214,7 @@ class PPTLayout(Dataset):
         trunc_len = (max_length-2)//5 # rm <bos> and <eos>
         seq_data = self.clean_data(pptdata,unkept_cates,trunc_len)
 
-        quant_size = pow(2,precision)
+        self.size = quant_size = pow(2,precision)
         self.categories = kept_cates
         cate2tok = {
             cate:id+quant_size for id,cate in enumerate(kept_cates)
