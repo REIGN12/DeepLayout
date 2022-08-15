@@ -275,9 +275,13 @@ class PPTLayout(Dataset):
     
     def seq_obj_analysis(self,pptdata:List[str]):
         print("Start Seq and Obj Number analysis...")
-        seq_data = [seq.split() for seq in "".join(pptdata).split("\n\n")]
+        seq_data = []
+        objlen_data = []
+        for seq in tqdm("".join(pptdata).split("\n\n")):
+            seq = seq.split()
+            seq_data.append(seq)
+            objlen_data.append(len(seq)//5)
         print(f"Number of Seqs:{len(seq_data)}")
-        objlen_data = [len(seq)//5 for seq in seq_data]
         print(f"MaxNumber of objs in a seq:{max(objlen_data)}")
 
     def clean_data(self,pptdata:List[str],unkept_cates:List[str],trunc_len:int)->List[List[str]]:
