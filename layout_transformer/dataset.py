@@ -198,6 +198,7 @@ class PPTLayout:
         seqs are serparated by empty line
         """
         with open(datapath,"r") as fin:
+            print(f"Reading data from {datapath}")
             pptdata = fin.readlines()
 
         # category analysis
@@ -225,9 +226,11 @@ class PPTLayout:
         cateratio = {cate : catenum[cate]/total_obj_num 
                     for cate in des_cate_keys
                 }
-        print("Category\tRatio")
+        accum = 0.
+        print("Category\tRatio\tTopKaccum")
         for cate in des_cate_keys:
-            print(f"{cate} | {cateratio[cate]:.3f}")
+            accum += cateratio[cate]
+            print(f"{cate} | {cateratio[cate]:.3f} | {accum:.3f}")
         print()
         print(f"Only keep {topK} most categories...")
         kept_cates = des_cate_keys[:topK]
