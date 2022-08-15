@@ -5,8 +5,10 @@ from torch.utils.data.dataset import Dataset
 from PIL import Image, ImageDraw, ImageOps
 import json
 
+from tqdm import tqdm
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple,Dict
+from numpy import ndarray
 
 from utils import trim_tokens, gen_colors
 
@@ -191,8 +193,8 @@ class JSONLayout(Dataset):
         return layout['x'], layout['y']
 
 
-class PPTLayout:
-    def __init__(self,datapath:Path=Path("pptdata.txt")) -> None:
+class PPTLayout(Dataset):
+    def __init__(self,datapath:Path,max_length:Optional[int]=None,precision:int=8) -> None:
         """
         pptdata.txt: 
         seqs are serparated by empty line
@@ -212,10 +214,42 @@ class PPTLayout:
         trunc_len = 64
         seq_data = self.clean_data(pptdata,unkept_cates,trunc_len)
 
+        quant_size = pow(2,precision)
+        self.categories = kept_cates
+        cate2tok = {
+            cate:id+quant_size for id,cate in enumerate(kept_cates)
+        }
+        print("Cate2Tok:",cate2tok)
+        self.seqs = self.convert2seq(cate2tok,quant_size)
+
+        self.vocab_size = self.size + len(self.categories) + 3 
+        self.bos_token = self.vocab_size - 3
+        self.eos_token = self.vocab_size - 2
+        self.pad_token = self.vocab_size - 1
+
+
+
+        
+
+
+
+    
+    def render(self):
+        img = Image.new('RGB', (256, 256), color=(255, 255, 255))
+        draw = ImageDraw.Draw(img, 'RGBA')
+        pass
+
+    def __getitem__(self, index) -> Tuple[ndarray,ndarray]:
+        return 
+    
+    def __len__(self):
+        return
+
 
     
     def category_analysis(self,pptdata:List[str], topK:int)->Tuple[List[str],List[str]]:
         # category analysis
+        print("Start Category analysis...")
         cate_data = [line.split()[0] for line in pptdata if line!='\n']
         total_obj_num = len(cate_data)
         catenum = {cate:0 for cate in cate_data}
@@ -240,12 +274,14 @@ class PPTLayout:
         return kept_cates,unkept_cates
     
     def seq_obj_analysis(self,pptdata:List[str]):
+        print("Start Seq and Obj Number analysis...")
         seq_data = [seq.split() for seq in "".join(pptdata).split("\n\n")]
         print(f"Number of Seqs:{len(seq_data)}")
         objlen_data = [len(seq)//5 for seq in seq_data]
         print(f"MaxNumber of objs in a seq:{max(objlen_data)}")
 
     def clean_data(self,pptdata:List[str],unkept_cates:List[str],trunc_len:int)->List[List[str]]:
+        print("Start data cleaning...")
         seq_data = [seq for seq in ''.join(pptdata).split("\n\n")]
         print(f"Before cleaning, Number of Seqs is {len(seq_data)}")
         seq_data = [seq for seq in seq_data if not any(u_cate in seq for u_cate in unkept_cates)]
@@ -254,6 +290,34 @@ class PPTLayout:
         seq_data = [seq for seq in seq_data if len(seq) < 5 * trunc_len]
         print(f"After cleaning too long(numobj > {trunc_len}) seqs\nNumber of Seqs is {len(seq_data)}")
         return seq_data
+
+    def convert2seq(seq_data:List[List[str]], cate2tok:Dict[str,int],quant_size:int)->List[ndarray]:
+        print("Start preparing seqs...")
+        seqs = []
+        seq_num = len(seq_data)
+        print(f"Total Number of Seqs: {seq_num}")
+        for seq in tqdm(seq_data):
+            seq = np.array(seq).reshape(-1,5)
+            cates = np.array([cate2tok[cate] for cate in seq[:,0].tolist()])
+            bbox = seq[:,1:].astype(float)
+            # convert from x2,y2 to wh
+            bbox[:,[2,3]] -= bbox[:,[0,1]] 
+            bbox.clip(0,1)
+            # quantize
+            bbox = (bbox * quant_size).astype(int)
+            # sorting from left2right and top2down
+            idx = np.lexsort((bbox[:,0],bbox[:,1]))
+            cates = cates[idx]
+            bbox = bbox[idx]
+            # flatten the seq
+            seq = np.concatenate((cates.reshape(-1,1),bbox),axis=1).flatten()
+            seqs.append(seq)
+        print(f"Runs for sanity check...")
+        objlen_data = [len(seq)//5 for seq in seqs]
+        print(f"MaxNumber of obj:{max(objlen_data)}")
+        print(f"First 10 seqs...")
+        print("\n".join([repr(seq) for seq in seqs[:10]]))
+        return seqs 
 
 
 import typer
