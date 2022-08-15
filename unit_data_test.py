@@ -3,6 +3,8 @@ from pathlib import Path
 import os
 import json
 
+app = typer.Typer()
+
 def isleaf_dir(abs_path:Path):
     return any(f.endswith(".json") for f in os.listdir(abs_path))
 
@@ -31,11 +33,18 @@ def traverse(cur_abs_path:Path):
             if os.path.isdir(childdir_path):
                 traverse(cur_abs_path/childdir)
 
-app = typer.Typer()
 @app.command()
 def run(dir_path:Path):
     traverse(dir_path)
     
+from .layout_transformer.dataset import PPTLayout
+
+@app.command()
+def pptdata_test(datapath:Path):
+    dataset = PPTLayout(datapath)
+    print("Finish Testing!")
+    print(f"Dataset is {dataset}")
+
 
 if __name__ == "__main__":
     app()
