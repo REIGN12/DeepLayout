@@ -251,3 +251,12 @@ class PPTLayout:
         seq_data = [seq for seq in seq_data if len(seq) < 5 * trunc_len]
         print(f"After cleaning too long(numobj > {trunc_len}) seqs\nNumber of Seqs is {len(seq_data)}")
         return seq_data
+
+
+import typer
+app = typer.Typer()
+@app.command()
+def ppt_test(datapath:Path):
+    dataset = PPTLayout(datapath)
+    print("Finish tesing")
+    print(f"dataset is {dataset}")
