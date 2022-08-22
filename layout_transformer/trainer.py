@@ -106,8 +106,8 @@ class Trainer:
             for it, (x, y) in pbar:
 
                 if epoch == 0 and not is_train:
-                    self.fixed_x = x[:min(4, len(x))]
-                    self.fixed_y = y[:min(4, len(y))]
+                    self.fixed_x = x[:min(10, len(x))]
+                    self.fixed_y = y[:min(10, len(y))]
 
                 # place data on the correct device
                 x = x.to(self.device)
