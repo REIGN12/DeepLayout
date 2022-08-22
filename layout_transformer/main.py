@@ -6,6 +6,8 @@ from model import GPT, GPTConfig
 from trainer import Trainer, TrainerConfig
 from utils import set_seed
 
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser('Layout Transformer')
@@ -45,6 +47,11 @@ if __name__ == "__main__":
     parser.add_argument('--sample_every', type=int, default=1, help="sample every epoch")
 
     args = parser.parse_args()
+
+    # adding dist support
+    dist.init_process_group('nccl')
+    rank = dist.get_rank()
+    torch.cuda.set_device(rank)
 
     log_dir = os.path.join(args.log_dir, args.exp)
     samples_dir = os.path.join(log_dir, "samples")

@@ -17,6 +17,10 @@ from torch.utils.data.dataloader import DataLoader
 
 from utils import sample
 
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data.distributed import DistributedSampler
+
 logger = logging.getLogger(__name__)
 
 
@@ -46,7 +50,7 @@ class TrainerConfig:
 class Trainer:
 
     def __init__(self, model, train_dataset, test_dataset, config, args):
-        self.model = model
+        self.model_no_ddp = model
         self.train_dataset = train_dataset
         self.test_dataset = test_dataset
         self.config = config
@@ -65,7 +69,12 @@ class Trainer:
         self.device = 'cpu'
         if torch.cuda.is_available():
             self.device = torch.cuda.current_device()
-            self.model = torch.nn.DataParallel(self.model).to(self.device)
+            rank = dist.get_rank()
+            self.model = DDP(self.model_no_ddp.to(self.device),device_ids=[rank])
+        else:
+            self.model = self.model_no_ddp
+            
+            
 
     def save_checkpoint(self):
         # DataParallel wrappers keep raw model object in .module attribute
@@ -84,9 +93,12 @@ class Trainer:
             is_train = split == 'train'
             model.train(is_train)
             data = self.train_dataset if is_train else self.test_dataset
+            sampler = DistributedSampler(data, num_replicas=dist.get_world_size(), rank=dist.get_rank(), shuffle=True)
             loader = DataLoader(data, shuffle=True, pin_memory=True,
+                                sampler=sampler,
                                 batch_size=config.batch_size,
                                 num_workers=config.num_workers)
+            loader.sampler.set_epoch(epoch)
 
             losses = []
             pbar = tqdm(enumerate(loader), total=len(loader)) if is_train else enumerate(loader)
