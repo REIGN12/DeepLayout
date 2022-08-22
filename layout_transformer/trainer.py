@@ -57,13 +57,14 @@ class Trainer:
         self.iters = 0
         self.fixed_x = None
         self.fixed_y = None
-        print("Using wandb")
-        wandb.login(key='a8c307987b041c73da9445e846682482ef2f526a')
-        wandb.init(
-            entity='reign',
-            project='LayoutTransformer', name=args.exp,
-        )
-        wandb.config.update(args)
+        if dist.get_rank() == 0:
+            print("Using wandb")
+            wandb.login(key='a8c307987b041c73da9445e846682482ef2f526a')
+            wandb.init(
+                entity='reign',
+                project='LayoutTransformer', name=args.exp,
+            )
+            wandb.config.update(args)
 
         # take over whatever gpus are on the system
         self.device = 'cpu'
@@ -144,16 +145,18 @@ class Trainer:
                         lr = config.learning_rate
 
                     # report progress
-                    wandb.log({
-                        'train loss': loss.item(),
-                        'lr': lr, 'epoch': epoch+1
-                    }, step=self.iters)
+                    if dist.get_rank() == 0:
+                        wandb.log({
+                            'train loss': loss.item(),
+                            'lr': lr, 'epoch': epoch+1
+                        }, step=self.iters)
                     pbar.set_description(f"epoch {epoch+1} iter {it}: train loss {loss.item():.5f}. lr {lr:e}")
 
             if not is_train:
                 test_loss = float(np.mean(losses))
                 logger.info("test loss: %f", test_loss)
-                wandb.log({'test loss': test_loss}, step=self.iters)
+                if dist.get_rank() == 0:
+                    wandb.log({'test loss': test_loss}, step=self.iters)
                 return test_loss
 
         best_loss = float('inf')
@@ -167,7 +170,8 @@ class Trainer:
             good_model = self.test_dataset is None or test_loss < best_loss
             if self.config.ckpt_dir is not None and good_model:
                 best_loss = test_loss
-                self.save_checkpoint()
+                if dist.get_rank() == 0:
+                    self.save_checkpoint()
 
             # sample from the model
             if self.config.samples_dir is not None and (epoch+1) % self.config.sample_every == 0:
@@ -206,13 +210,14 @@ class Trainer:
                 #     layout = self.train_dataset.render(layout)
                 #     layout.save(os.path.join(self.config.samples_dir, f'sample_det_{epoch:02d}_{i:02d}.png'))
 
-                wandb.log({
-                    "input_layouts": [wandb.Image(pil, caption=f'input_{epoch:02d}_{i:02d}.png')
-                                      for i, pil in enumerate(input_layouts)],
-                    "recon_layouts": [wandb.Image(pil, caption=f'recon_{epoch:02d}_{i:02d}.png')
-                                      for i, pil in enumerate(recon_layouts)],
-                    "sample_random_layouts": [wandb.Image(pil, caption=f'sample_random_{epoch:02d}_{i:02d}.png')
-                                              for i, pil in enumerate(sample_random_layouts)],
-                    "sample_det_layouts": [wandb.Image(pil, caption=f'sample_det_{epoch:02d}_{i:02d}.png')
-                                           for i, pil in enumerate(sample_det_layouts)],
-                }, step=self.iters)
+                if dist.get_rank() == 0:
+                    wandb.log({
+                        "input_layouts": [wandb.Image(pil, caption=f'input_{epoch:02d}_{i:02d}.png')
+                                        for i, pil in enumerate(input_layouts)],
+                        "recon_layouts": [wandb.Image(pil, caption=f'recon_{epoch:02d}_{i:02d}.png')
+                                        for i, pil in enumerate(recon_layouts)],
+                        "sample_random_layouts": [wandb.Image(pil, caption=f'sample_random_{epoch:02d}_{i:02d}.png')
+                                                for i, pil in enumerate(sample_random_layouts)],
+                        "sample_det_layouts": [wandb.Image(pil, caption=f'sample_det_{epoch:02d}_{i:02d}.png')
+                                            for i, pil in enumerate(sample_det_layouts)],
+                    }, step=self.iters)
