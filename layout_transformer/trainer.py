@@ -95,7 +95,7 @@ class Trainer:
             model.train(is_train)
             data = self.train_dataset if is_train else self.test_dataset
             sampler = DistributedSampler(data, num_replicas=dist.get_world_size(), rank=dist.get_rank(), shuffle=True)
-            loader = DataLoader(data, shuffle=True, pin_memory=True,
+            loader = DataLoader(data,pin_memory=True,
                                 sampler=sampler,
                                 batch_size=config.batch_size,
                                 num_workers=config.num_workers)
