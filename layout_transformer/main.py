@@ -46,6 +46,9 @@ if __name__ == "__main__":
     parser.add_argument('--final_iters', type=int, default=0, help="cosine lr final iters")
     parser.add_argument('--sample_every', type=int, default=1, help="sample every epoch")
 
+    # adding ddp support for parser
+    parser.add_argument('--local_rank',type=int,help="Supporting PyTorch DDP")
+
     args = parser.parse_args()
 
     # adding dist support
