@@ -194,9 +194,9 @@ class JSONLayout(Dataset):
 
 
 class PPTLayout(Dataset):
-    def __init__(self,datapath:Path,max_length:int=162,precision:int=8) -> None:
+    def __init__(self,datapath:Path,max_length:int=162,precision:int=8, topK_cates:Optional[int]=None) -> None:
         """
-        pptdata.txt: 
+        pptdata.txt or bpdata.txt 
         seqs are serparated by empty line
         """
         with open(datapath,"r") as fin:
@@ -204,7 +204,6 @@ class PPTLayout(Dataset):
             pptdata = fin.readlines()
 
         # category analysis
-        topK_cates = 3
         kept_cates,unkept_cates = self.category_analysis(pptdata,topK_cates)   
         # seq and obj analysis
         self.seq_obj_analysis(pptdata)
@@ -265,7 +264,7 @@ class PPTLayout(Dataset):
     def __len__(self)->int:
         return len(self.data)
     
-    def category_analysis(self,pptdata:List[str], topK:int)->Tuple[List[str],List[str]]:
+    def category_analysis(self,pptdata:List[str], topK:Optional[int]=None)->Tuple[List[str],List[str]]:
         # category analysis
         print("Start Category analysis...")
         cate_data = [line.split()[0] for line in pptdata if line!='\n']
@@ -284,6 +283,9 @@ class PPTLayout(Dataset):
             accum += cateratio[cate]
             print(f"{cate} | {cateratio[cate]:.3f} | {accum:.3f}")
         print()
+        if topK is None:
+            print("No categories are dropped...")
+            topK = len(des_cate_keys)
         print(f"Only keep {topK} most categories...")
         kept_cates = des_cate_keys[:topK]
         print(f"Only keep {kept_cates}...")
