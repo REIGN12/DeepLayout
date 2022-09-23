@@ -3,6 +3,24 @@ import torch
 from torch import Tensor
 from einops import rearrange
 
+# cp from https://github.com/rwightman/pytorch-image-models/timm/utils/metrics.py
+class AverageMeter:
+    """Computes and stores the average and current value"""
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
 def compute_overlap(bboxes:Tensor,bbox_nums:Tensor)->float:
     """
     bboxes: (B,N,4) xywh
