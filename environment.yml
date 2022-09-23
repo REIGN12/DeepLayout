@@ -17,3 +17,5 @@ dependencies:
     - wandb
     - tabulate
     - ipdb
+    - typer
+    - einops
