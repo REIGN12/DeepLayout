@@ -21,6 +21,8 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
 
+from metric import AverageMeter, compute_overlap, seqs2bboxes
+
 logger = logging.getLogger(__name__)
 
 
@@ -153,10 +155,27 @@ class Trainer:
                     pbar.set_description(f"epoch {epoch+1} iter {it}: train loss {loss.item():.5f}. lr {lr:e}")
 
             if not is_train:
+                # do evaluation here
+                logger.info("Start evaluation test...")
+                overlap_meter_random = AverageMeter()                
+                for it, (x,y) in pbar:
+                    x = x.to(self.device)
+
+                    # samples - random
+                    layouts = sample(model, x[:, :6], steps=self.train_dataset.max_length,
+                                    temperature=1.0, sample=True, top_k=5).detach()#.cpu().numpy()
+                    bboxs,bbox_nums = seqs2bboxes(layouts,self.train_dataset.eos_token)
+                    overlap = compute_overlap(bboxs,bbox_nums)
+                    overlap_meter_random.update(overlap)
+
                 test_loss = float(np.mean(losses))
                 logger.info("test loss: %f", test_loss)
+                logger.info(f"overlap_random : {overlap_meter_random.avg}")
                 if dist.get_rank() == 0:
-                    wandb.log({'test loss': test_loss}, step=self.iters)
+                    wandb.log({
+                        'test loss': test_loss,
+                        "overlap_random":overlap_meter_random.avg
+                    }, step=self.iters)
                 return test_loss
 
         best_loss = float('inf')
