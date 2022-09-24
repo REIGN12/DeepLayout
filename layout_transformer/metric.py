@@ -93,7 +93,9 @@ def compute_overlap(bboxes:Tensor,bbox_nums:Tensor)->float:
     for i,n in enumerate(bbox_nums):
         eff_areas = areas[i][:n,:n] # (n,n)
         diag = eff_areas.diag()
-        res +=  ( (eff_areas.sum(dim=-1) / diag ).mean().item() - 1 )
+        # note div zero condition
+        non_zero_mask = diag>0
+        res +=  ( (eff_areas.sum(dim=-1)[non_zero_mask] / diag[non_zero_mask] ).mean().item() - 1 )
 
     return res / B
 
