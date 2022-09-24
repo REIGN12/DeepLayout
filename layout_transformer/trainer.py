@@ -156,9 +156,9 @@ class Trainer:
                     pbar.set_description(f"epoch {epoch+1} iter {it}: train loss {loss.item():.5f}. lr {lr:e}")
 
                 else:
-                    # samples - random
-                    layouts = sample(model, x[:, :6], steps=self.train_dataset.max_length,
-                                    temperature=1.0, sample=True, top_k=5).detach()#.cpu().numpy()
+                    # samples - cateCondition
+                    layouts = sample(model, x[:, :1], steps=self.test_dataset.max_length,
+                                temperature=1.0, sample=True, top_k=5, only_label=True, gt=x).detach()
                     bboxs,bbox_nums = seqs2bboxes(layouts,self.train_dataset.eos_token)
                     overlap = compute_overlap(bboxs,bbox_nums)
                     overlap_meter_random.update(overlap)
@@ -226,7 +226,10 @@ class Trainer:
                 # for i, layout in enumerate(layouts):
                 #     layout = self.train_dataset.render(layout)
                 #     layout.save(os.path.join(self.config.samples_dir, f'sample_det_{epoch:02d}_{i:02d}.png'))
-
+                # samples - cate_cond
+                layouts = sample(model, x_cond[:, :1], steps=self.test_dataset.max_length,
+                            temperature=1.0, sample=True, top_k=5, only_label=True, gt=x_cond).detach().cpu().numpy()
+                cate_cond_layouts = [self.train_dataset.render(layout) for layout in layouts]
                 if dist.get_rank() == 0:
                     wandb.log({
                         "input_layouts": [wandb.Image(pil, caption=f'input_{epoch:02d}_{i:02d}.png')
@@ -237,4 +240,6 @@ class Trainer:
                                                 for i, pil in enumerate(sample_random_layouts)],
                         "sample_det_layouts": [wandb.Image(pil, caption=f'sample_det_{epoch:02d}_{i:02d}.png')
                                             for i, pil in enumerate(sample_det_layouts)],
+                        "cate_cond_layouts": [wandb.Image(pil, caption=f'cate_cond_{epoch:02d}_{i:02d}.png')
+                                            for i, pil in enumerate(cate_cond_layouts)],
                     }, step=self.iters)

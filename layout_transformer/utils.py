@@ -31,7 +31,7 @@ def gen_colors(num_colors):
 
 
 @torch.no_grad()
-def sample(model, x, steps, temperature=1.0, sample=False, top_k=None):
+def sample(model, x, steps, temperature=1.0, sample=False, top_k=None, only_label=False, gt=None):
     """
     take a conditioning sequence of indices in x (of shape (b,t)) and predict the next token in
     the sequence, feeding the predictions back into the model each time. Clearly the sampling
@@ -42,23 +42,26 @@ def sample(model, x, steps, temperature=1.0, sample=False, top_k=None):
     model.eval()
     for k in range(steps):
         x_cond = x if x.size(1) <= block_size else x[:, -block_size:]  # crop context if needed
-        logits, _ = model(x_cond)
-        # pluck the logits at the final step and scale by temperature
-        logits = logits[:, -1, :] / temperature
-        # optionally crop probabilities to only the top k options
-        if top_k is not None:
-            logits = top_k_logits(logits, top_k)
-        # apply softmax to convert to probabilities
-        probs = F.softmax(logits, dim=-1)
-        # sample from the distribution or take the most likely
-        if sample:
-            ix = torch.multinomial(probs, num_samples=1)
+        if only_label == True and k % 5 == 0:
+            ix = gt[:, k+1].unsqueeze(1)
         else:
-            _, ix = torch.topk(probs, k=1, dim=-1)
+            logits, _ = model(x_cond)
+            # pluck the logits at the final step and scale by temperature
+            logits = logits[:, -1, :] / temperature
+            # optionally crop probabilities to only the top k options
+            if top_k is not None:
+                logits = top_k_logits(logits, top_k)
+            # apply softmax to convert to probabilities
+            probs = F.softmax(logits, dim=-1)
+            # sample from the distribution or take the most likely
+            if sample:
+                ix = torch.multinomial(probs, num_samples=1)
+            else:
+                _, ix = torch.topk(probs, k=1, dim=-1)
         # append to the sequence and continue
         x = torch.cat((x, ix), dim=1)
-
     return x
+
 
 
 def trim_tokens(tokens, bos, eos, pad=None):
