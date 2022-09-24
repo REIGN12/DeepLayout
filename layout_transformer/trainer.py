@@ -162,7 +162,7 @@ class Trainer:
                                 temperature=1.0, sample=True, top_k=5, only_label=True, gt=x).detach()
                     bboxs,bbox_nums = seqs2bboxes(layouts,self.train_dataset.eos_token)
                     overlap = compute_overlap(bboxs,bbox_nums)
-                    alignment = compute_alignment(bboxs,bbox_nums)
+                    alignment = compute_alignment(bboxs,bbox_nums,quant_size=self.train_dataset.size)
                     overlap_meter_cate_cond.update(overlap)
                     alignment_meter_cate_cond.update(alignment)
 

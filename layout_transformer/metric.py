@@ -99,7 +99,7 @@ def compute_overlap(bboxes:Tensor,bbox_nums:Tensor)->float:
 
     return res / B
 
-def compute_alignment(bboxes:Tensor,bbox_nums:Tensor)->float:
+def compute_alignment(bboxes:Tensor,bbox_nums:Tensor,quant_size:int=256)->float:
     """
     bboxes: (B,N,4) xywh
     bbox_nums:(B,) indicate real length
@@ -129,7 +129,7 @@ def compute_alignment(bboxes:Tensor,bbox_nums:Tensor)->float:
     for i,n in enumerate(bbox_nums):
         if n==0: continue # fix zero generation bug
         eff_unalignment = unalignment[i][:n,:n] 
-        res += torch.mean(-torch.log(1 - eff_unalignment.min(dim=-1).values )).item()
+        res += torch.mean(-torch.log(1 - eff_unalignment.min(dim=-1).values/quant_size )).item()
 
     return res/B
 
