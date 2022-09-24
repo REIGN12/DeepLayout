@@ -99,6 +99,39 @@ def compute_overlap(bboxes:Tensor,bbox_nums:Tensor)->float:
 
     return res / B
 
+def compute_alignment(bboxes:Tensor,bbox_nums:Tensor)->float:
+    """
+    bboxes: (B,N,4) xywh
+    bbox_nums:(B,) indicate real length
+    >>> bboxes =  torch.tensor([
+    ...     [[0,0,2,2],[1,2,1,1],[1,1,1,1]]
+    ... ])
+    >>> bbox_nums = torch.tensor([3,])
+    >>> compute_alignment(bboxes,bbox_nums)
+    0.0
+    >>> bboxes =  torch.tensor([
+    ...     [[0,0,2,2],[1.5,2.5,1,1],[1,1,1,1]]
+    ... ])
+    >>> bbox_nums = torch.tensor([3,])
+    >>> compute_alignment(bboxes,bbox_nums) # gt: -log(0.5)/3
+    0.2310490608215332
+    """
+    B,N,_ = bboxes.shape
+    # xywh -> x1y1x2y2
+    bboxes[...,[2,3]] += bboxes[...,[0,1]]
+    # x1y1x2y2 -> x1y1x2y2xcyc
+    # import ipdb; ipdb.set_trace()
+    xcyc = rearrange(bboxes,'b n (lr xy) -> b n xy lr',xy=2).sum(dim=-1) / 2.
+    bboxes = torch.cat((bboxes,xcyc),dim=-1) # (B,N,6)
+    unalignment = torch.abs(bboxes[...,None,:] - bboxes[:,None,...]).min(dim=-1).values #(B,N,N)
+    unalignment[:,range(N),range(N)] = float('inf') # do not consider oneself
+    res = 0.
+    for i,n in enumerate(bbox_nums):
+        eff_unalignment = unalignment[i][:n,:n] 
+        res += torch.mean(-torch.log(1 - eff_unalignment.min(dim=-1).values )).item()
+
+    return res/B
+
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
