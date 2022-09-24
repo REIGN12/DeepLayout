@@ -47,7 +47,7 @@ def seqs2bboxes(seqs:Tensor,eos:int)->Tuple[Tensor,Tensor]:
     """
     B,TL = seqs.shape
     seqs = seqs.clone()[:,1:] # rm <bos>
-    seq_lengths = ( (seqs==eos).int() * reversed(torch.arange(1,TL))[None,:] ).argmax(-1,keepdim=True)
+    seq_lengths = ( (seqs==eos).int() * reversed(torch.arange(1,TL,device=seqs.device))[None,:] ).argmax(-1,keepdim=True)
 
     if torch.any(seq_lengths % 5 != 0):
         import warnings
