@@ -21,7 +21,7 @@ import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data.distributed import DistributedSampler
 
-from metric import AverageMeter, compute_overlap, seqs2bboxes
+from metric import AverageMeter, compute_alignment, compute_overlap, seqs2bboxes
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,8 @@ class Trainer:
             loader.sampler.set_epoch(epoch)
 
             losses = []
-            overlap_meter_random = AverageMeter()                
+            overlap_meter_cate_cond = AverageMeter()                
+            alignment_meter_cate_cond = AverageMeter()                
             pbar = tqdm(enumerate(loader), total=len(loader)) if is_train else enumerate(loader)
             for it, (x, y) in pbar:
 
@@ -161,18 +162,22 @@ class Trainer:
                                 temperature=1.0, sample=True, top_k=5, only_label=True, gt=x).detach()
                     bboxs,bbox_nums = seqs2bboxes(layouts,self.train_dataset.eos_token)
                     overlap = compute_overlap(bboxs,bbox_nums)
-                    overlap_meter_random.update(overlap)
+                    alignment = compute_alignment(bboxs,bbox_nums)
+                    overlap_meter_cate_cond.update(overlap)
+                    alignment_meter_cate_cond.update(alignment)
 
             if not is_train:
                 # do evaluation here
                 logger.info("Report evaluation res...")
                 test_loss = float(np.mean(losses))
                 logger.info("test loss: %f", test_loss)
-                logger.info(f"overlap_random : {overlap_meter_random.avg}")
+                logger.info(f"overlap_cate_cond : {overlap_meter_cate_cond.avg}")
+                logger.info(f"aligment_cate_cond : {alignment_meter_cate_cond.avg}")
                 if dist.get_rank() == 0:
                     wandb.log({
                         'test loss': test_loss,
-                        "overlap_random":overlap_meter_random.avg
+                        "overlap_cate_cond":overlap_meter_cate_cond.avg,
+                        "alignment_cate_cond":alignment_meter_cate_cond.avg,
                     }, step=self.iters)
                 return test_loss
 
