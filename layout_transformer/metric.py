@@ -127,6 +127,7 @@ def compute_alignment(bboxes:Tensor,bbox_nums:Tensor)->float:
     unalignment[:,range(N),range(N)] = float('inf') # do not consider oneself
     res = 0.
     for i,n in enumerate(bbox_nums):
+        if n==0: continue # fix zero generation bug
         eff_unalignment = unalignment[i][:n,:n] 
         res += torch.mean(-torch.log(1 - eff_unalignment.min(dim=-1).values )).item()
 
