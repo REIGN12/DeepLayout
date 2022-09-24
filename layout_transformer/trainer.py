@@ -104,6 +104,7 @@ class Trainer:
             loader.sampler.set_epoch(epoch)
 
             losses = []
+            overlap_meter_random = AverageMeter()                
             pbar = tqdm(enumerate(loader), total=len(loader)) if is_train else enumerate(loader)
             for it, (x, y) in pbar:
 
@@ -154,13 +155,7 @@ class Trainer:
                         }, step=self.iters)
                     pbar.set_description(f"epoch {epoch+1} iter {it}: train loss {loss.item():.5f}. lr {lr:e}")
 
-            if not is_train:
-                # do evaluation here
-                logger.info("Start evaluation test...")
-                overlap_meter_random = AverageMeter()                
-                for it, (x,y) in pbar:
-                    x = x.to(self.device)
-
+                else:
                     # samples - random
                     layouts = sample(model, x[:, :6], steps=self.train_dataset.max_length,
                                     temperature=1.0, sample=True, top_k=5).detach()#.cpu().numpy()
@@ -168,6 +163,9 @@ class Trainer:
                     overlap = compute_overlap(bboxs,bbox_nums)
                     overlap_meter_random.update(overlap)
 
+            if not is_train:
+                # do evaluation here
+                logger.info("Report evaluation res...")
                 test_loss = float(np.mean(losses))
                 logger.info("test loss: %f", test_loss)
                 logger.info(f"overlap_random : {overlap_meter_random.avg}")
