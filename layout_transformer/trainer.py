@@ -105,6 +105,8 @@ class Trainer:
 
             losses = []
             overlap_meter_cate_cond = AverageMeter()                
+            overlap_meter_sample_random = AverageMeter()
+
             alignment_meter_cate_cond = AverageMeter()                
             pbar = tqdm(enumerate(loader), total=len(loader)) if is_train else enumerate(loader)
             for it, (x, y) in pbar:
@@ -165,6 +167,12 @@ class Trainer:
                     alignment = compute_alignment(bboxs,bbox_nums,quant_size=self.train_dataset.size)
                     overlap_meter_cate_cond.update(overlap)
                     alignment_meter_cate_cond.update(alignment)
+                    # samples - random
+                    layouts = sample(model, x_cond[:, :6], steps=self.train_dataset.max_length,
+                                 temperature=1.0, sample=True, top_k=5).detach()
+                    bboxs,bbox_nums = seqs2bboxes(layouts,self.train_dataset.eos_token)
+                    overlap = compute_overlap(bboxs,bbox_nums)
+                    overlap_meter_sample_random.update(overlap)
 
             if not is_train:
                 # do evaluation here
@@ -172,11 +180,13 @@ class Trainer:
                 test_loss = float(np.mean(losses))
                 logger.info("test loss: %f", test_loss)
                 logger.info(f"overlap_cate_cond : {overlap_meter_cate_cond.avg}")
+                logger.info(f"overlap_sample_random : {overlap_meter_sample_random.avg}")
                 logger.info(f"aligment_cate_cond : {alignment_meter_cate_cond.avg}")
                 if dist.get_rank() == 0:
                     wandb.log({
                         'test loss': test_loss,
                         "overlap_cate_cond":overlap_meter_cate_cond.avg,
+                        "overlap_sample_random":overlap_meter_sample_random.avg,
                         "alignment_cate_cond":alignment_meter_cate_cond.avg,
                     }, step=self.iters)
                 return test_loss
